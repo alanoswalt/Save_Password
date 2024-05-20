@@ -20,12 +20,13 @@ class main_window:
                         
                         Enter a number
                         1. Add entry
-                        2. Delete entry
-                        3. Update entry
+                        2. Print table
+                        3. Delete entry
                         4. Close app
                     '''
 
         self.db_insert = f'''INSERT INTO '{self.name_of_table}'(account, user_email, password) VALUES (?, ?, ?)'''
+        self.db_delete = f'''DELETE from '{self.name_of_table}' WHERE account = ?'''
         #root.mainloop()
 
     def create_or_connect_dbs(self, table_name):
@@ -42,21 +43,30 @@ class main_window:
             conection.commit()
         conection.close()
         print(result)
-    
- 
-    def gui(self):
 
-        print(self.gui_main_page)
-        user_input = input("Please enter your answer: ")
+    def query(self):
 
-        if user_input == '1':
-            account = input("Please enter the accoun: ")
-            user_email = input("Please enter your user: ")
-            password = input("Please enter your password: ")
-            self.submit(account, user_email, password)
+        connection = sqlite3.connect("password_db.db")
+        #connection.row_factory = sqlite3.Row #This returns the data as a dictionary
 
-        elif user_input == '4':
-            sys.exit()   
+        #Create a cursur, like a pointer, does stuff
+        cursor = connection.cursor()
+
+        #Query Data base
+        cursor.execute("SELECT * FROM password_table")
+        records = cursor.fetchall()
+        #records = cur.fetchone()
+        #records = cur.fetchmany(2)
+
+        for record in records:
+            print(record)
+            #print_records += str(record[0]) + " " + str(record[1]) + "\n"
+
+        #To commit the changes
+        connection.commit()
+
+        #Close the connection to data base
+        connection.close()
     
     def submit(self, account, user_email, password):
 
@@ -73,9 +83,44 @@ class main_window:
         #Close the connection to data base
         conection.close()
 
+    def delete(self, account):
+            #This needs to happend again inside the function
+        connection = sqlite3.connect("password_db.db")
 
+        #Create a cursur, like a pointer, does stuff
+        cursor = connection.cursor()
 
+        #Insert in tablee
+        cursor.execute(self.db_delete, (account,))
 
+        #To commit the changes
+        connection.commit()
+
+        #Close the connection to data base
+        connection.close()
+
+    def gui(self):
+
+        print(self.gui_main_page)
+        user_input = input("Please enter your answer: ")
+
+        if user_input == '1':
+            account = input("Please enter the accoun: ")
+            user_email = input("Please enter your user: ")
+            password = input("Please enter your password: ")
+            self.submit(account, user_email, password)
+
+        elif user_input == '2':
+            self.query()
+
+        elif user_input == '3':
+            account = input("Please enter the account to delete: ")
+            self.delete(account)
+            print("Record deleted")
+            self.query()
+
+        elif user_input == '4':
+            sys.exit()   
 
 def main():
     new = main_window()
