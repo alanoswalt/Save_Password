@@ -1,6 +1,7 @@
 from tkinter import *
 import sqlite3
 import sys
+from cryptography.fernet import Fernet
 
 class database:
     def __init__(self) -> None:
@@ -114,6 +115,19 @@ class database:
         #Close the connection to data base
         connection.close()
 
+class encode_decode:
+    def __init__(self) -> None:
+        self.decode()
+    
+    def decode(self):
+        key = Fernet.generate_key()
+        fernet = Fernet(key)
+        password = "hello"
+        encrypted_password = fernet.encrypt(password.encode())
+        decrypted_password = fernet.decrypt(encrypted_password).decode()
+        print(f"Original password: {password}")
+        print(f"Encrypted password: {encrypted_password}")
+        print(f"Decrypted password: {decrypted_password}")
 class main_window:
 
     def __init__(self) -> None:
@@ -167,10 +181,11 @@ class main_window:
 
 
 def main():
-    new = main_window()
+    #new = main_window()
 
-    while True:
-        new.gui()
+    test = encode_decode()
+    #while True:
+    #    new.gui()
 
 if __name__ == "__main__":
     main()
