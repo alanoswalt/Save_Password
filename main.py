@@ -1,6 +1,7 @@
 from tkinter import *
 import sqlite3
 import sys
+import os
 from cryptography.fernet import Fernet
 
 class database:
@@ -117,17 +118,56 @@ class database:
 
 class encode_decode:
     def __init__(self) -> None:
-        self.decode()
-    
+        self.file_path = "my_file.txt"
+
+
+        self.check_or_create_key()
+        #self.decode()
+
     def decode(self):
         key = Fernet.generate_key()
         fernet = Fernet(key)
         password = "hello"
         encrypted_password = fernet.encrypt(password.encode())
         decrypted_password = fernet.decrypt(encrypted_password).decode()
+        print(f"Original password: {key}")
+        print(f"Original password: {fernet}")
         print(f"Original password: {password}")
         print(f"Encrypted password: {encrypted_password}")
         print(f"Decrypted password: {decrypted_password}")
+
+    def read_file(self, file_path):
+        try:
+            with open(file_path, 'r') as file:
+                content = file.read()
+                return content
+        except FileNotFoundError:
+            return None
+
+    def write_key(self, file_path, data):
+        with open(file_path, 'w') as file:
+            file.write(data.decode())
+
+    def create_new_key(self):
+        key = Fernet.generate_key()
+        return key
+
+    def check_or_create_key(self):
+
+         # Check if the file exists
+        if os.path.exists(self.file_path):
+            content = self.read_file(self.file_path)
+            if content:
+                print(f"File '{self.file_path}' exists and contains:\n{content}")
+            else:
+                print(f"File '{self.file_path}' exists but is empty.")
+        else:
+            print(f"File '{self.file_path}' does not exist. Creating it...")
+            key = self.create_new_key()
+            self.write_key(self.file_path, key)
+            print(f"File '{self.file_path}' created with initial data:\n{key}")
+
+
 class main_window:
 
     def __init__(self) -> None:
