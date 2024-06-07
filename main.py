@@ -4,7 +4,7 @@ import sys
 import os
 from cryptography.fernet import Fernet
 
-class database:
+class user_database:
     def __init__(self) -> None:
         #root = Tk()
         #root.title('Save Passwords')
@@ -23,6 +23,10 @@ class database:
 
         self.db_create = f'''CREATE TABLE IF NOT EXISTS {self.name_of_table} (account TEXT, user_email TEXT, password TEXT)'''
 
+        #Have an ecoder for the database
+        self.encoder = encode_decode()
+
+        #Call function to connect to DB
         self.create_or_connect_dbs()
 
         #root.mainloop()
@@ -59,8 +63,13 @@ class database:
         #records = cur.fetchmany(2)
 
         for record in records:
+            #print(f"All fileds are {record[0]}, {record[1]}, {record[2]}")
             print(record)
-            #print_records += str(record[0]) + " " + str(record[1]) + "\n"
+            record0=record[0]
+            record1=self.encoder.decode(record[1])
+            record2=self.encoder.decode(record[2])
+
+            print(f"This are the filds {record0}, {record1}, {record2}")
 
         #To commit the changes
         connection.commit()
@@ -72,6 +81,12 @@ class database:
 
         conection = sqlite3.connect(self.name_of_db)
         cursor = conection.cursor()
+
+
+        #account = self.encoder.encode(account)
+        user_email = self.encoder.encode(user_email)
+        password = self.encoder.encode(password)
+
 
         #Insert in tablee
         cursor.execute(self.db_insert, (account, user_email, password))
@@ -88,7 +103,6 @@ class database:
 
         #Create a cursur, like a pointer, does stuff
         cursor = connection.cursor()
-
         #Insert in tablee
         cursor.execute(self.db_delete, (account,))
 
@@ -119,22 +133,21 @@ class database:
 class encode_decode:
     def __init__(self) -> None:
         self.file_path = "my_file.txt"
-
-
+        self.key = ""
         self.check_or_create_key()
         #self.decode()
 
-    def decode(self):
-        key = Fernet.generate_key()
-        fernet = Fernet(key)
-        password = "hello"
-        encrypted_password = fernet.encrypt(password.encode())
-        decrypted_password = fernet.decrypt(encrypted_password).decode()
-        print(f"Original password: {key}")
-        print(f"Original password: {fernet}")
-        print(f"Original password: {password}")
-        print(f"Encrypted password: {encrypted_password}")
-        print(f"Decrypted password: {decrypted_password}")
+    def encode(self, field):
+        fernet = Fernet(self.key)
+        encrypted_field = fernet.encrypt(field.encode())
+        #print(f"Password saved: {encrypted_field}")
+        return encrypted_field
+
+    def decode(self, encrypted_field):
+        fernet = Fernet(self.key)
+        decrypted_field = fernet.decrypt(encrypted_field).decode()    
+        #print(f"Show password: {decrypted_field}")
+        return decrypted_field
 
     def read_file(self, file_path):
         try:
@@ -144,10 +157,12 @@ class encode_decode:
         except FileNotFoundError:
             return None
 
+    #Escribir la llave en texto, no en binario
     def write_key(self, file_path, data):
         with open(file_path, 'w') as file:
             file.write(data.decode())
 
+    #Crea la llave en binario
     def create_new_key(self):
         key = Fernet.generate_key()
         return key
@@ -156,17 +171,16 @@ class encode_decode:
 
          # Check if the file exists
         if os.path.exists(self.file_path):
-            content = self.read_file(self.file_path)
-            if content:
-                print(f"File '{self.file_path}' exists and contains:\n{content}")
+            self.key = self.read_file(self.file_path).encode()
+            if self.key:
+                print(f"File '{self.file_path}' exists and contains:\n{self.key}") #la imprime en texto (sacado del txt)
             else:
                 print(f"File '{self.file_path}' exists but is empty.")
         else:
             print(f"File '{self.file_path}' does not exist. Creating it...")
-            key = self.create_new_key()
-            self.write_key(self.file_path, key)
-            print(f"File '{self.file_path}' created with initial data:\n{key}")
-
+            self.key = self.create_new_key()
+            self.write_key(self.file_path, self.key)
+            print(f"File '{self.file_path}' created with initial data:\n{self.key}") #La imprime en binario
 
 class main_window:
 
@@ -185,10 +199,9 @@ class main_window:
                 4. Update entry
                 5. Close app
             '''
-        self.data = database()
+        self.data = user_database()
 
         #root.mainloop()
-
 
     def gui(self):
 
@@ -220,10 +233,32 @@ class main_window:
             sys.exit()   
 
 
+class login_window:
+    def __init__(self) -> None:
+        self.gui_main_page = '''
+                
+                Enter a number
+                1. Log in
+                2. Sing Up
+            '''
+    def gui(self):
+        print(self.gui_main_page)
+        user_input = input("Please enter your answer: ")
+
+        if user_input == '1':
+            account = input("Please enter the account: ")
+            user_email = input("Please enter your user: ")
+            password = input("Please enter your password: ")
+            self.data.submit(account, user_email, password)
+
+        elif user_input == '2':
+            self.data.query()
+
+
 def main():
     #new = main_window()
-
-    test = encode_decode()
+    new_login = login_window()
+    #test = encode_decode()
     #while True:
     #    new.gui()
 
