@@ -5,7 +5,7 @@ import os
 from cryptography.fernet import Fernet
 
 class user_database:
-    def __init__(self) -> None:
+    def __init__(self, name_of_db) -> None:
         #root = Tk()
         #root.title('Save Passwords')
         #root.geometry("400x200")
@@ -24,7 +24,8 @@ class user_database:
         self.db_create = f'''CREATE TABLE IF NOT EXISTS {self.name_of_table} (account TEXT, user_email TEXT, password TEXT)'''
 
         #Have an ecoder for the database
-        self.encoder = encode_decode()
+        self.name_of_db = name_of_db
+        self.encoder = encode_decode(self.name_of_db)
 
         #Call function to connect to DB
         self.create_or_connect_dbs()
@@ -131,8 +132,8 @@ class user_database:
         connection.close()
 
 class encode_decode:
-    def __init__(self) -> None:
-        self.file_path = "my_file.txt"
+    def __init__(self, name_of_key) -> None:
+        self.file_path = f"{name_of_key}.txt"
         self.key = ""
         self.check_or_create_key()
         #self.decode()
@@ -184,7 +185,7 @@ class encode_decode:
 
 class main_window:
 
-    def __init__(self) -> None:
+    def __init__(self, user_app) -> None:
         #root = Tk()
         #root.title('Save Passwords')
         #root.geometry("400x200")
@@ -199,7 +200,8 @@ class main_window:
                 4. Update entry
                 5. Close app
             '''
-        self.data = user_database()
+        self.user_app = user_app
+        self.data = user_database(self.user_app)
 
         #root.mainloop()
 
@@ -233,31 +235,142 @@ class main_window:
             sys.exit()   
 
 
-class login_window:
+
+class all_users_database:
     def __init__(self) -> None:
-        self.gui_main_page = '''
+        #root = Tk()
+        #root.title('Save Passwords')
+        #root.geometry("400x200")
+
+        #Database variables
+        self.name_of_db = "all_user.db"
+        self.name_of_table = "all_user"
+
+        self.db_insert = f'''INSERT INTO '{self.name_of_table}'(user_email, password) VALUES (?, ?)'''
+        self.db_delete = f'''DELETE from '{self.name_of_table}' WHERE account = ?'''
+        self.db_update = f'''UPDATE '{self.name_of_table}' SET user_email = ?, password = ? WHERE account = ?'''
+        self.db_query = f'''SELECT * FROM '{self.name_of_table}' '''
+
+        self.db_connect = f'''SELECT name FROM sqlite_master WHERE type='table' AND name='{self.name_of_table}' '''
+
+        self.db_create = f'''CREATE TABLE IF NOT EXISTS {self.name_of_table} (user_email TEXT, password TEXT)'''
+
+        self.check_query = f'''SELECT 1 FROM {self.name_of_table} WHERE user_email = ? LIMIT 1'''
+
+        #Have an ecoder for the database
+        self.users_db_key = "all_users_key"
+        self.user_encoder = encode_decode(self.users_db_key)
+
+        #Call function to connect to DB
+        self.create_or_connect_dbs()
+
+        #root.mainloop()
+
+    def create_or_connect_dbs(self):
+        conection = sqlite3.connect(self.name_of_db)
+        cursor = conection.cursor()
+        cursor.execute(self.db_connect)
+        result = cursor.fetchall()
+
+        if result:
+            print(f"The table '{self.name_of_table}' exists.")
+        else:
+            print(f"The table '{self.name_of_table}' does not exist. Creating it now...")
+            cursor.execute(self.db_create)
+            conection.commit()
+        conection.close()
+        print(result)
+
+    def add_new_user(self, user_email, password):
+        conection = sqlite3.connect(self.name_of_db)
+        cursor = conection.cursor()
+
+        #account = self.encoder.encode(account)
+        #user_email = self.user_encoder.encode(user_email)
+        password = self.user_encoder.encode(password)
+
+        #Insert in tablee
+        cursor.execute(self.db_insert, (user_email, password))
+
+        #To commit the changes
+        conection.commit()
+
+        #Close the connection to data base
+        conection.close()
+   
+    def look_for_user(self, user_email):
+        # Connect to the SQLite database
+        connection = sqlite3.connect(self.name_of_db)
+        cursor = connection.cursor()
+        
+        # Execute the query
+        cursor.execute(self.check_query, (user_email,))
+        
+        # Fetch one result
+        result = cursor.fetchone()
+        
+        if result is not None:
+            # User exists
+            connection.close()
+            print(f"User {user_email} already exists in the table {self.name_of_table}.")
+            return True
+        else:
+            # User does not exist, insert the user
+
+            connection.close()
+            print(f"User {user_email} doesn't exists in the table {self.name_of_table}.")
+            return False
+
+    def compare_password(user_email, password):
+        return None
+
+class login_window:
+    def __init__(self, user_name_app) -> None:
+        self.gui_login_page = '''
                 
                 Enter a number
                 1. Log in
                 2. Sing Up
-            '''
+            '''        
+        self.user_name_app = ""
+        self.user_db = all_users_database()
+
     def gui(self):
-        print(self.gui_main_page)
+        print(self.gui_login_page)
         user_input = input("Please enter your answer: ")
 
         if user_input == '1':
-            account = input("Please enter the account: ")
             user_email = input("Please enter your user: ")
             password = input("Please enter your password: ")
-            self.data.submit(account, user_email, password)
+            user_exists = self.user_db.look_for_user(user_email)
+
+            if user_exists:
+                self.user_db.compare_password(user_email, password)
+            else:
+                print("User doesn't exists, create one")
+                self.user_db.add_new_user(user_email, password)
 
         elif user_input == '2':
-            self.data.query()
+            user_email = input("Please enter new user: ")
+            password = input("Please enter new password: ")
 
+            user_exists = self.user_db.look_for_user(user_email)
+
+            if user_exists:
+                print("User already exists, please login")
+            else:
+                print("User doesn't exists, create one")
+                self.user_db.add_new_user(user_email, password)
+
+            self.user_db.add_new_user(user_email, password)
+        self.user_name_app = user_email
 
 def main():
     #new = main_window()
     new_login = login_window()
+    #user_app = new_login.user_name_app
+
+     #new = main_window(user_app)
     #test = encode_decode()
     #while True:
     #    new.gui()
