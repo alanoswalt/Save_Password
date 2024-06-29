@@ -4,6 +4,58 @@ import sys
 import os
 from cryptography.fernet import Fernet
 
+class encode_decode:
+    def __init__(self, name_of_key) -> None:
+        self.file_path = f"{name_of_key}.txt"
+        self.key = ""
+        self.check_or_create_key()
+        #self.decode()
+
+    def encode(self, field):
+        fernet = Fernet(self.key)
+        encrypted_field = fernet.encrypt(field.encode())
+        #print(f"Password saved: {encrypted_field}")
+        return encrypted_field
+
+    def decode(self, encrypted_field):
+        fernet = Fernet(self.key)
+        decrypted_field = fernet.decrypt(encrypted_field).decode()    
+        #print(f"Show password: {decrypted_field}")
+        return decrypted_field
+
+    def read_file(self, file_path):
+        try:
+            with open(file_path, 'r') as file:
+                content = file.read()
+                return content
+        except FileNotFoundError:
+            return None
+
+    #Escribir la llave en texto, no en binario
+    def write_key(self, file_path, data):
+        with open(file_path, 'w') as file:
+            file.write(data.decode())
+
+    #Crea la llave en binario
+    def create_new_key(self):
+        key = Fernet.generate_key()
+        return key
+
+    def check_or_create_key(self):
+
+         # Check if the file exists
+        if os.path.exists(self.file_path):
+            self.key = self.read_file(self.file_path).encode()
+            if self.key:
+                print(f"File '{self.file_path}' exists and contains:\n{self.key}") #la imprime en texto (sacado del txt)
+            else:
+                print(f"File '{self.file_path}' exists but is empty.")
+        else:
+            print(f"File '{self.file_path}' does not exist. Creating it...")
+            self.key = self.create_new_key()
+            self.write_key(self.file_path, self.key)
+            print(f"File '{self.file_path}' created with initial data:\n{self.key}") #La imprime en binario
+
 class user_database:
     def __init__(self, name_of_db) -> None:
         #root = Tk()
@@ -131,58 +183,6 @@ class user_database:
         #Close the connection to data base
         connection.close()
 
-class encode_decode:
-    def __init__(self, name_of_key) -> None:
-        self.file_path = f"{name_of_key}.txt"
-        self.key = ""
-        self.check_or_create_key()
-        #self.decode()
-
-    def encode(self, field):
-        fernet = Fernet(self.key)
-        encrypted_field = fernet.encrypt(field.encode())
-        #print(f"Password saved: {encrypted_field}")
-        return encrypted_field
-
-    def decode(self, encrypted_field):
-        fernet = Fernet(self.key)
-        decrypted_field = fernet.decrypt(encrypted_field).decode()    
-        #print(f"Show password: {decrypted_field}")
-        return decrypted_field
-
-    def read_file(self, file_path):
-        try:
-            with open(file_path, 'r') as file:
-                content = file.read()
-                return content
-        except FileNotFoundError:
-            return None
-
-    #Escribir la llave en texto, no en binario
-    def write_key(self, file_path, data):
-        with open(file_path, 'w') as file:
-            file.write(data.decode())
-
-    #Crea la llave en binario
-    def create_new_key(self):
-        key = Fernet.generate_key()
-        return key
-
-    def check_or_create_key(self):
-
-         # Check if the file exists
-        if os.path.exists(self.file_path):
-            self.key = self.read_file(self.file_path).encode()
-            if self.key:
-                print(f"File '{self.file_path}' exists and contains:\n{self.key}") #la imprime en texto (sacado del txt)
-            else:
-                print(f"File '{self.file_path}' exists but is empty.")
-        else:
-            print(f"File '{self.file_path}' does not exist. Creating it...")
-            self.key = self.create_new_key()
-            self.write_key(self.file_path, self.key)
-            print(f"File '{self.file_path}' created with initial data:\n{self.key}") #La imprime en binario
-
 class main_window:
 
     def __init__(self, user_app) -> None:
@@ -234,8 +234,6 @@ class main_window:
         elif user_input == '5':
             sys.exit()   
 
-
-
 class all_users_database:
     def __init__(self) -> None:
         #root = Tk()
@@ -256,6 +254,8 @@ class all_users_database:
         self.db_create = f'''CREATE TABLE IF NOT EXISTS {self.name_of_table} (user_email TEXT, password TEXT)'''
 
         self.check_query = f'''SELECT 1 FROM {self.name_of_table} WHERE user_email = ? LIMIT 1'''
+
+        self.retrive_password = f'''SELECT password FROM {self.name_of_table} WHERE user_email = ?'''
 
         #Have an ecoder for the database
         self.users_db_key = "all_users_key"
@@ -282,11 +282,13 @@ class all_users_database:
         print(result)
 
     def add_new_user(self, user_email, password):
+        print("Conecting to DB..")
         conection = sqlite3.connect(self.name_of_db)
         cursor = conection.cursor()
 
         #account = self.encoder.encode(account)
         #user_email = self.user_encoder.encode(user_email)
+        print("Encoding information")
         password = self.user_encoder.encode(password)
 
         #Insert in tablee
@@ -308,6 +310,7 @@ class all_users_database:
         
         # Fetch one result
         result = cursor.fetchone()
+        print(result)
         
         if result is not None:
             # User exists
@@ -316,16 +319,44 @@ class all_users_database:
             return True
         else:
             # User does not exist, insert the user
-
             connection.close()
             print(f"User {user_email} doesn't exists in the table {self.name_of_table}.")
             return False
+        
 
-    def compare_password(user_email, password):
-        return None
+    def compare_password(self, user_email, password):
+        conection = sqlite3.connect(self.name_of_db)
+        cursor = conection.cursor()
+
+        #account = self.encoder.encode(account)
+        #user_email = self.user_encoder.encode(user_email)
+        print("|---------------------------------------------|")
+        print("Retriving data")
+
+        #Insert in tablee
+        cursor.execute(self.retrive_password, (user_email,))
+        encrypt_password = cursor.fetchone()[0]
+        decrypt_password = self.user_encoder.decode(encrypt_password)
+
+        print(cursor.fetchone())
+        print(cursor.fetchone())
+
+        print(encrypt_password)
+        print(decrypt_password)
+
+        if decrypt_password == password:
+            print("This is a correct password")
+        else:
+            print("This isn't a correct password")
+
+        #To commit the changes
+        conection.commit()
+
+        #Close the connection to data base
+        conection.close()
 
 class login_window:
-    def __init__(self, user_name_app) -> None:
+    def __init__(self) -> None:
         self.gui_login_page = '''
                 
                 Enter a number
@@ -334,6 +365,7 @@ class login_window:
             '''        
         self.user_name_app = ""
         self.user_db = all_users_database()
+        self.gui()
 
     def gui(self):
         print(self.gui_login_page)
@@ -347,8 +379,12 @@ class login_window:
             if user_exists:
                 self.user_db.compare_password(user_email, password)
             else:
-                print("User doesn't exists, create one")
-                self.user_db.add_new_user(user_email, password)
+                print("User doesn't exists, create one?")
+                question_create_one = input("Please enter your answer: yes/no")
+                if question_create_one.lower().strip() == "yes":
+                    self.user_db.add_new_user(user_email, password)
+                else:
+                    print("Login with correct user")
 
         elif user_input == '2':
             user_email = input("Please enter new user: ")
@@ -361,9 +397,18 @@ class login_window:
             else:
                 print("User doesn't exists, create one")
                 self.user_db.add_new_user(user_email, password)
-
-            self.user_db.add_new_user(user_email, password)
         self.user_name_app = user_email
+        print(self.user_name_app)
+
+
+
+
+
+
+
+
+
+
 
 def main():
     #new = main_window()
