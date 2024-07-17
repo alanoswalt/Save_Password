@@ -188,8 +188,9 @@ class main_window:
         #root.geometry("400x200")
 
         #Database variables
-        self.gui_main_page = '''
-                
+        self.user_app = user_app
+        self.gui_main_page = f'''
+                Welcome {self.user_app}
                 Enter a number
                 1. Add entry
                 2. Print table
@@ -197,7 +198,6 @@ class main_window:
                 4. Update entry
                 5. Close app
             '''
-        self.user_app = user_app
         self.data = user_database(self.user_app)
 
         #root.mainloop()
@@ -318,7 +318,7 @@ class all_users_database:
         conection = sqlite3.connect(self.name_of_db)
         cursor = conection.cursor()
 
-        log.indo("|---------------------------------------------|")
+        log.info("|---------------------------------------------|")
         print("Retriving data")
 
         cursor.execute(self.retrive_password, (user_email,))
@@ -327,6 +327,8 @@ class all_users_database:
 
         log.info(cursor.fetchone())
 
+        correct_password = True
+
         #print(encrypt_password)
         #print(decrypt_password)
 
@@ -334,12 +336,14 @@ class all_users_database:
             log.info("This is a correct password")
         else:
             log.warning("This isn't a correct password")
+            correct_password = False
 
         #To commit the changes
         conection.commit()
 
         #Close the connection to data base
         conection.close()
+        return correct_password
 
 class login_window:
     def __init__(self) -> None:
@@ -371,19 +375,34 @@ class login_window:
         
         if user_input == '1':
             log.info("Looking for user")
-            user_exists = self.user_db.look_for_user(user_email)
-            if user_exists:
-                log.info("User exist, comparing password")
-                self.user_db.compare_password(user_email, password)
-                #FALTA PONER QUE PASA SI EL PASSWORD NO ESTA BIEN
-            else:
-                print("User doesn't exists, create one?")
-                question_create_one = input("Please enter your answer: yes/no")
-                if question_create_one.lower().strip() == "yes":
-                    log.info("Adding new user")
-                    self.user_db.add_new_user(user_email, password)
+            for i in range(2):
+                user_exists = self.user_db.look_for_user(user_email)
+                if user_exists:
+                    log.info("User exist, comparing password")
+                    correct_password = self.user_db.compare_password(user_email, password)
+                    
+                    if not correct_password:
+                        print("Provide correct credentials")
+                        user_email = input("Please enter your user: ")
+                        password = input("Please enter your password: ")
+                    else:
+                        break
+                        
                 else:
-                    print("Login with correct user")
+                    print("User doesn't exists, create one?")
+                    question_create_one = input("Please enter your answer: yes/no")
+                    if question_create_one.lower().strip() == "yes":
+                        log.info("Adding new user")
+                        self.user_db.add_new_user(user_email, password)
+                        break
+                    else:
+                        print("Login with correct user")
+                        sys.exit()
+
+            else:
+                print('Closing app please provide correct input')
+                sys.exit()
+                
 
         elif user_input == '2':
             user_exists = self.user_db.look_for_user(user_email)
