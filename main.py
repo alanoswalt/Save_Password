@@ -416,10 +416,6 @@ class login_window:
         self.user_name_app = user_email
         print(self.user_name_app)
     
-
-
-
-
 class Save_Password:
     def __init__(self) -> None:
         self.login_window_object = login_window()
@@ -430,11 +426,6 @@ class Save_Password:
     def run_main_window(self):
         while True:
             self.main_window_object.gui()
-
-
-
-
-
 
 def main():
     log.basicConfig(level=log.DEBUG) #How to move this later
