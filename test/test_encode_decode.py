@@ -3,12 +3,15 @@ import pytest
 import os
 
 # Fixture to initialize the main.encode_decode class instance
-@pytest.fixture
+# Fixture here and not un conftest because of clarity
+#Scope class because we want the sabe instance for all test in the class
+@pytest.fixture(scope='class')
 def encode_decode_instance():
     test_file_key = "test/test_file_key"
     instance = main.encode_decode(test_file_key)
     return instance
 
+@pytest.mark.encode_decode
 class encode_decode_Tests:
 
     def test_check_or_create_key(self, encode_decode_instance):

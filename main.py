@@ -76,7 +76,7 @@ class user_database:
         self.db_create = f'''CREATE TABLE IF NOT EXISTS {self.name_of_table} (account TEXT, user_email TEXT, password TEXT)'''
 
         #Have an ecoder for the database
-        self.encoder = encode_decode(self.name_of_db)
+        self.encoder = encode_decode(name_of_db)
 
         #Call function to connect to DB
         self.create_or_connect_dbs()
