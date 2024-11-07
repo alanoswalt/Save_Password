@@ -12,7 +12,7 @@ def user_database_instance():
     return instance
 
 @pytest.mark.user_database
-class encode_decode_Tests:
+class user_DB_Tests:
 
     def test_check_database_files(self, user_database_instance):
         expected_file_key = "test/test_database.txt"

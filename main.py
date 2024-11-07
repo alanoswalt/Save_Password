@@ -232,9 +232,9 @@ class main_window:
             sys.exit()   
 
 class all_users_database:
-    def __init__(self) -> None:
+    def __init__(self, name_of_db) -> None:
         #Name of database and table
-        self.name_of_db = "all_user.db"
+        self.name_of_db = f"{name_of_db}.db"
         self.name_of_table = "all_user"
 
         #Sql commands
@@ -248,7 +248,7 @@ class all_users_database:
         self.retrive_password = f'''SELECT password FROM {self.name_of_table} WHERE user_email = ?'''
 
         #Name of key file and create object of encoder for users
-        self.users_db_key = "all_users_key"
+        self.users_db_key = f"{name_of_db}"
         self.user_encoder = encode_decode(self.users_db_key)
 
         #Call function to connect to DB
@@ -356,7 +356,7 @@ class login_window:
             '''        
         self.user_name_app = ""
         self.valid_user_in_database = False
-        self.user_db = all_users_database()
+        self.user_db = all_users_database("all_user")
         self.gui()
 
     def gui(self):
