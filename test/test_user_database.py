@@ -7,7 +7,7 @@ import sqlite3
 # Fixture to initialize the main.encode_decode class instance
 @pytest.fixture(scope='class')
 def user_database_instance():
-    test_name_database = "test/test_database"
+    test_name_database = "test/one_user_test_database"
     instance = main.user_database(test_name_database)
     return instance
 
@@ -15,14 +15,14 @@ def user_database_instance():
 class user_DB_Tests:
 
     def test_check_database_files(self, user_database_instance):
-        expected_file_key = "test/test_database.txt"
-        expected_file_db = "test/test_database.db"
+        expected_file_key = "test/one_user_test_database.txt"
+        expected_file_db = "test/one_user_test_database.db"
         assert os.path.exists(expected_file_key), f"File does not exist: {expected_file_key}"
         assert os.path.exists(expected_file_db), f"File does not exist: {expected_file_db}"
 
     def test_submit(self, user_database_instance):
         
-        test_database = "test/test_database.db"
+        test_database = "test/one_user_test_database.db"
         test_account = "test_account"
         test_username = "test_username"
         test_password = "test_password"
@@ -44,7 +44,7 @@ class user_DB_Tests:
 
     def test_update(self, user_database_instance):
         
-        test_database = "test/test_database.db"
+        test_database = "test/one_user_test_database.db"
         test_account_original = "test_account_original"
         test_username_original = "test_username_original"
         test_password_original = "test_password_original"
@@ -71,7 +71,7 @@ class user_DB_Tests:
 
     def test_delete(self, user_database_instance):
         
-        test_database = "test/test_database.db"
+        test_database = "test/one_user_test_database.db"
         test_account_delete = "test_account_delete"
         test_username_delete = "test_username_delete"
         test_password_delete = "test_password_delete"
