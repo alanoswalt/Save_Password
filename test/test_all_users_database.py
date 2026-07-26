@@ -2,13 +2,14 @@ import main
 import pytest
 import os
 import sqlite3
+from database import all_users_db
 
 
 # Fixture to initialize the main.encode_decode class instance
 @pytest.fixture(scope='class')
 def users_database_instance():
-    test_name_database = "test/all_user_database_test"
-    instance = main.all_users_database(test_name_database)
+    test_name_database = os.path.join("test", "all_user_database_test")
+    instance = all_users_db.all_users_database(test_name_database)
     return instance
 
 
@@ -16,7 +17,7 @@ def users_database_instance():
 class user_DB_Tests:
 
     def test_check_database_files(self, users_database_instance):
-        expected_file_key = "test/all_user_database_test.txt"
+        expected_file_key = "test/keys/all_user_database_test.txt"
         expected_file_db = "test/all_user_database_test.db"
         assert os.path.exists(expected_file_key), f"File does not exist: {expected_file_key}"
         assert os.path.exists(expected_file_db), f"File does not exist: {expected_file_db}"

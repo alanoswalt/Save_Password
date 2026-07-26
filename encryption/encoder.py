@@ -3,8 +3,8 @@ import os
 from cryptography.fernet import Fernet
 
 class encode_decode:
-    def __init__(self, name_of_key) -> None:
-        self.file_path = os.path.join("data", "keys", f"{name_of_key}.txt")
+    def __init__(self, name_of_key, base_dir="data/keys") -> None:
+        self.file_path = os.path.join(base_dir, f"{name_of_key}.txt")
         self.key = ""
         self.check_or_create_key()
 
@@ -17,7 +17,6 @@ class encode_decode:
     def decode(self, encrypted_field):
         fernet = Fernet(self.key)
         decrypted_field = fernet.decrypt(encrypted_field).decode()    
-        #print(f"Show password: {decrypted_field}")
         return decrypted_field
 
     def read_file(self, file_path):
