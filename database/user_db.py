@@ -3,13 +3,13 @@ import os
 from encryption.encoder import encode_decode
 
 class user_database:
-    def __init__(self, name_of_db) -> None:
+    def __init__(self, name_of_db, db_path=None, key_path=None) -> None:
         #root = Tk()
         #root.title('Save Passwords')
         #root.geometry("400x200")
 
         #Database variables
-        self.name_of_db = os.path.join("data", "users", f"{name_of_db}.db")
+        self.name_of_db = db_path or os.path.join("data", "users", f"{name_of_db}.db")
         self.name_of_table = "password_table"
 
         self.db_insert = f'''INSERT INTO '{self.name_of_table}'(account, user_email, password) VALUES (?, ?, ?)'''
@@ -22,7 +22,7 @@ class user_database:
         self.db_create = f'''CREATE TABLE IF NOT EXISTS {self.name_of_table} (account TEXT, user_email TEXT, password TEXT)'''
 
         #Have an ecoder for the database
-        self.encoder = encode_decode(name_of_db)
+        self.encoder = encode_decode(name_of_db, key_path=key_path)
 
         #Call function to connect to DB
         self.create_or_connect_dbs()
@@ -30,6 +30,7 @@ class user_database:
         #root.mainloop()
 
     def create_or_connect_dbs(self):
+        os.makedirs(os.path.dirname(self.name_of_db) or ".", exist_ok=True)
         conection = sqlite3.connect(self.name_of_db)
         cursor = conection.cursor()
         cursor.execute(self.db_connect)

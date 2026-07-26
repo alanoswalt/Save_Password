@@ -4,9 +4,9 @@ import os
 from encryption.encoder import encode_decode
 
 class all_users_database:
-    def __init__(self, name_of_db) -> None:
+    def __init__(self, name_of_db="all_user", db_path=None, key_path=None) -> None:
         #Name of database and table
-        self.name_of_db = os.path.join("data", "all_user.db") 
+        self.name_of_db = db_path or os.path.join("data", "all_user.db")
         self.name_of_table = "all_user"
 
 
@@ -22,7 +22,7 @@ class all_users_database:
 
         #Name of key file and create object of encoder for users
         self.users_db_key = f"{name_of_db}"
-        self.user_encoder = encode_decode(self.users_db_key)
+        self.user_encoder = encode_decode(self.users_db_key, key_path=key_path)
 
         #Call function to connect to DB
         self.create_or_connect_dbs()
@@ -31,6 +31,7 @@ class all_users_database:
 
     def create_or_connect_dbs(self):
         log.info("Conecting to dbs")
+        os.makedirs(os.path.dirname(self.name_of_db) or ".", exist_ok=True)
         conection = sqlite3.connect(self.name_of_db)
         cursor = conection.cursor()
         cursor.execute(self.db_connect)

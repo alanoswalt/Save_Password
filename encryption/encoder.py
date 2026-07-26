@@ -3,8 +3,13 @@ import os
 from cryptography.fernet import Fernet
 
 class encode_decode:
-    def __init__(self, name_of_key, base_dir="data/keys") -> None:
-        self.file_path = os.path.join(base_dir, f"{name_of_key}.txt")
+    def __init__(self, name_of_key, base_dir="data/keys", key_path=None) -> None:
+        """Create an encoder using a key stored at an explicit or default path.
+
+        ``key_path`` is useful for tests, while the application can continue to
+        use the default ``data/keys`` directory.
+        """
+        self.file_path = key_path or os.path.join(base_dir, f"{name_of_key}.txt")
         self.key = ""
         self.check_or_create_key()
 
@@ -30,6 +35,7 @@ class encode_decode:
     #Escribir la llave en texto, no en binario
     def write_key(self, file_path, data):
         log.info(f"File '{file_path}' does not exist. Creating it...")
+        os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
         with open(file_path, 'w') as file:
             file.write(data.decode())
         log.info(f"File '{file_path}' created with initial data:\n{self.key}") #La imprime en binario

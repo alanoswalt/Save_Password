@@ -8,8 +8,12 @@ from database import all_users_db
 # Fixture to initialize the main.encode_decode class instance
 @pytest.fixture(scope='class')
 def users_database_instance():
-    test_name_database = os.path.join("test", "all_user_database_test")
-    instance = all_users_db.all_users_database(test_name_database)
+    test_name_database = "all_user_database_test"
+    instance = all_users_db.all_users_database(
+        test_name_database,
+        db_path=os.path.join("test", "all_user_database_test.db"),
+        key_path=os.path.join("test", "keys", "all_user_database_test.txt"),
+    )
     return instance
 
 

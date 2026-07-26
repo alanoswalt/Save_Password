@@ -1,14 +1,18 @@
-import main
 import pytest
 import os
 import sqlite3
+from database.user_db import user_database
 
 
 # Fixture to initialize the main.encode_decode class instance
 @pytest.fixture(scope='class')
 def user_database_instance():
-    test_name_database = "test/one_user_test_database"
-    instance = main.user_database(test_name_database)
+    test_name_database = "one_user_test_database"
+    instance = user_database(
+        test_name_database,
+        db_path="test/one_user_test_database.db",
+        key_path="test/one_user_test_database.txt",
+    )
     return instance
 
 @pytest.mark.user_database
@@ -53,7 +57,7 @@ class user_DB_Tests:
         test_password_update = "test_password_update"
 
 
-        query = "SELECT 1 FROM password_table WHERE user_email = ? LIMIT 1"
+        query = "SELECT user_email FROM password_table WHERE account = ? LIMIT 1"
 
         user_database_instance.submit(test_account_original, test_username_original, test_password_original)
         user_database_instance.update(test_account_original, test_username_update, test_password_update)
@@ -61,13 +65,14 @@ class user_DB_Tests:
         conn = sqlite3.connect(test_database)
         cursor = conn.cursor()
 
-        cursor.execute(query, (test_username_update,))
+        cursor.execute(query, (test_account_original,))
         result = cursor.fetchone()
 
         cursor.close()
         conn.close()
 
-        assert(result)
+        assert result is not None
+        assert user_database_instance.encoder.decode(result[0]) == test_username_update
 
     def test_delete(self, user_database_instance):
         
