@@ -12,9 +12,6 @@ class all_users_database:
 
         #Sql commands
         self.db_insert = f'''INSERT INTO '{self.name_of_table}'(user_email, password) VALUES (?, ?)'''
-        self.db_delete = f'''DELETE from '{self.name_of_table}' WHERE account = ?'''
-        self.db_update = f'''UPDATE '{self.name_of_table}' SET user_email = ?, password = ? WHERE account = ?'''
-        self.db_query = f'''SELECT * FROM '{self.name_of_table}' '''
         self.db_connect = f'''SELECT name FROM sqlite_master WHERE type='table' AND name='{self.name_of_table}' '''
         self.db_create = f'''CREATE TABLE IF NOT EXISTS {self.name_of_table} (user_email TEXT, password TEXT)'''
         self.check_query = f'''SELECT 1 FROM {self.name_of_table} WHERE user_email = ? LIMIT 1'''
@@ -32,89 +29,59 @@ class all_users_database:
     def create_or_connect_dbs(self):
         log.info("Conecting to dbs")
         os.makedirs(os.path.dirname(self.name_of_db) or ".", exist_ok=True)
-        conection = sqlite3.connect(self.name_of_db)
-        cursor = conection.cursor()
-        cursor.execute(self.db_connect)
-        result = cursor.fetchall()
+        try:
+            with sqlite3.connect(self.name_of_db) as connection:
+                cursor = connection.cursor()
+                cursor.execute(self.db_connect)
+                result = cursor.fetchone()
 
-        if result:
-            log.info(f"The table '{self.name_of_table}' exists.")
-        else:
-            log.warning(f"The table '{self.name_of_table}' does not exist. Creating it now...")
-            cursor.execute(self.db_create)
-            conection.commit()
-        conection.close()
+                if result:
+                    log.info(f"The table '{self.name_of_table}' exists.")
+                else:
+                    log.warning(f"The table '{self.name_of_table}' does not exist. Creating it now...")
+                    cursor.execute(self.db_create)
+        except sqlite3.Error as exc:
+            log.exception("Could not initialize the users database")
+            raise RuntimeError(f"Could not initialize database '{self.name_of_db}'") from exc
 
     def add_new_user(self, user_email, password):
         print("Conecting to DB..")
-        conection = sqlite3.connect(self.name_of_db)
-        cursor = conection.cursor()
-
-        #account = self.encoder.encode(account)
-        #user_email = self.user_encoder.encode(user_email)
-        print("Encoding information")
-        password = self.user_encoder.encode(password)
-
-        #Insert in tablee
-        cursor.execute(self.db_insert, (user_email, password))
-
-        #To commit the changes
-        conection.commit()
-
-        #Close the connection to data base
-        conection.close()
+        try:
+            password = self.user_encoder.encode(password)
+            with sqlite3.connect(self.name_of_db) as connection:
+                connection.execute(self.db_insert, (user_email, password))
+        except sqlite3.Error as exc:
+            log.exception("Could not add user '%s'", user_email)
+            raise RuntimeError("Could not add user") from exc
    
     def look_for_user(self, user_email):
         # Connect to the SQLite database
-        connection = sqlite3.connect(self.name_of_db)
-        cursor = connection.cursor()
-        
-        # Execute the query
-        cursor.execute(self.check_query, (user_email,))
-        
-        # Fetch one result
-        result = cursor.fetchone()
-        log.info(result)
-        
-        if result is not None:
-            # User exists
-            connection.close()
-            log.info(f"User {user_email} already exists in the table {self.name_of_table}.")
-            return True
-        else:
-            # User does not exist, insert the user
-            connection.close()
-            log.info(f"User {user_email} doesn't exists in the table {self.name_of_table}.")
-            return False
+        try:
+            with sqlite3.connect(self.name_of_db) as connection:
+                result = connection.execute(self.check_query, (user_email,)).fetchone()
+        except sqlite3.Error as exc:
+            log.exception("Could not look up user '%s'", user_email)
+            raise RuntimeError("Could not look up user") from exc
+
+        exists = result is not None
+        log.info("User %s %s in the table %s.", user_email,
+                 "already exists" if exists else "does not exist", self.name_of_table)
+        return exists
         
     def compare_password(self, user_email, password):
 
-        conection = sqlite3.connect(self.name_of_db)
-        cursor = conection.cursor()
+        try:
+            with sqlite3.connect(self.name_of_db) as connection:
+                result = connection.execute(self.retrive_password, (user_email,)).fetchone()
+        except sqlite3.Error as exc:
+            log.exception("Could not retrieve password for '%s'", user_email)
+            raise RuntimeError("Could not retrieve user password") from exc
 
-        log.info("|---------------------------------------------|")
-        print("Retriving data")
+        if result is None:
+            return False
 
-        cursor.execute(self.retrive_password, (user_email,))
-        encrypt_password = cursor.fetchone()[0]
-        decrypt_password = self.user_encoder.decode(encrypt_password)
-
-        log.info(cursor.fetchone())
-
-        correct_password = True
-
-        #print(encrypt_password)
-        #print(decrypt_password)
-
-        if decrypt_password == password:
-            log.info("This is a correct password")
-        else:
-            log.warning("This isn't a correct password")
-            correct_password = False
-
-        #To commit the changes
-        conection.commit()
-
-        #Close the connection to data base
-        conection.close()
-        return correct_password
+        try:
+            return self.user_encoder.decode(result[0]) == password
+        except Exception:
+            log.exception("Could not decode password for '%s'", user_email)
+            raise RuntimeError("Could not decode user password")

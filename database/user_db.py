@@ -31,100 +31,59 @@ class user_database:
 
     def create_or_connect_dbs(self):
         os.makedirs(os.path.dirname(self.name_of_db) or ".", exist_ok=True)
-        conection = sqlite3.connect(self.name_of_db)
-        cursor = conection.cursor()
-        cursor.execute(self.db_connect)
-        result = cursor.fetchall()
+        try:
+            with sqlite3.connect(self.name_of_db) as connection:
+                cursor = connection.cursor()
+                cursor.execute(self.db_connect)
+                result = cursor.fetchone()
 
-        if result:
-            print(f"The table '{self.name_of_table}' exists.")
-        else:
-            print(f"The table '{self.name_of_table}' does not exist. Creating it now...")
-            cursor.execute(self.db_create)
-            conection.commit()
-        conection.close()
-        print(result)
+                if result:
+                    print(f"The table '{self.name_of_table}' exists.")
+                else:
+                    print(f"The table '{self.name_of_table}' does not exist. Creating it now...")
+                    cursor.execute(self.db_create)
+        except sqlite3.Error as exc:
+            raise RuntimeError(f"Could not initialize database '{self.name_of_db}'") from exc
 
     def query(self):
 
-        connection = sqlite3.connect(self.name_of_db)
-        #connection.row_factory = sqlite3.Row #This returns the data as a dictionary
+        try:
+            with sqlite3.connect(self.name_of_db) as connection:
+                records = connection.execute(self.db_query).fetchall()
 
-        #Create a cursur, like a pointer, does stuff
-        cursor = connection.cursor()
-
-        #Query Data base
-        cursor.execute(self.db_query )
-        records = cursor.fetchall()
-        #records = cur.fetchone()
-        #records = cur.fetchmany(2)
-
-        for record in records:
-            #print(f"All fileds are {record[0]}, {record[1]}, {record[2]}")
-            print(record)
-            record0=record[0]
-            record1=self.encoder.decode(record[1])
-            record2=self.encoder.decode(record[2])
-
-            print(f"This are the filds {record0}, {record1}, {record2}")
-
-        #To commit the changes
-        connection.commit()
-
-        #Close the connection to data base
-        connection.close()
+            for record in records:
+                record0 = record[0]
+                record1 = self.encoder.decode(record[1])
+                record2 = self.encoder.decode(record[2])
+                print(f"{record0}, {record1}, {record2}")
+        except sqlite3.Error as exc:
+            raise RuntimeError("Could not read password records") from exc
 
     def submit(self, account, user_email, password):
 
-        conection = sqlite3.connect(self.name_of_db)
-        cursor = conection.cursor()
-
-
-        #account = self.encoder.encode(account)
-        user_email = self.encoder.encode(user_email)
-        password = self.encoder.encode(password)
-
-
-        #Insert in tablee
-        cursor.execute(self.db_insert, (account, user_email, password))
-
-        #To commit the changes
-        conection.commit()
-
-        #Close the connection to data base
-        conection.close()
+        try:
+            user_email = self.encoder.encode(user_email)
+            password = self.encoder.encode(password)
+            with sqlite3.connect(self.name_of_db) as connection:
+                connection.execute(self.db_insert, (account, user_email, password))
+        except sqlite3.Error as exc:
+            raise RuntimeError("Could not save password record") from exc
 
     def delete(self, account):
             #This needs to happend again inside the function
-        connection = sqlite3.connect(self.name_of_db)
-
-        #Create a cursur, like a pointer, does stuff
-        cursor = connection.cursor()
-        #Insert in tablee
-        cursor.execute(self.db_delete, (account,))
-
-        #To commit the changes
-        connection.commit()
-
-        #Close the connection to data base
-        connection.close()
+        try:
+            with sqlite3.connect(self.name_of_db) as connection:
+                connection.execute(self.db_delete, (account,))
+        except sqlite3.Error as exc:
+            raise RuntimeError("Could not delete password record") from exc
 
     def update(self, account, user_email, password):
 
         #This needs to happend again inside the function
-        connection = sqlite3.connect(self.name_of_db)
-
-        #Create a cursur, like a pointer, does stuff
-        cur = connection.cursor()
-
-        #Insert in tablee
-        user_email = self.encoder.encode(user_email)
-        password = self.encoder.encode(password)
-
-        cur.execute(self.db_update, (user_email, password, account))
-
-        #To commit the changes
-        connection.commit()
-
-        #Close the connection to data base
-        connection.close()
+        try:
+            user_email = self.encoder.encode(user_email)
+            password = self.encoder.encode(password)
+            with sqlite3.connect(self.name_of_db) as connection:
+                connection.execute(self.db_update, (user_email, password, account))
+        except sqlite3.Error as exc:
+            raise RuntimeError("Could not update password record") from exc
