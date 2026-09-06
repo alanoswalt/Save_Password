@@ -16,7 +16,6 @@ class encode_decode:
     def encode(self, field):
         fernet = Fernet(self.key)
         encrypted_field = fernet.encrypt(field.encode())
-        print(f"Password saved: {encrypted_field}")
         return encrypted_field
 
     def decode(self, encrypted_field):
@@ -38,7 +37,7 @@ class encode_decode:
         os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
         with open(file_path, 'w') as file:
             file.write(data.decode())
-        log.info(f"File '{file_path}' created with initial data:\n{self.key}") #La imprime en binario
+        log.info("Encryption key file created")
 
     #Crea la llave en binario
     def create_new_key(self):
@@ -51,7 +50,7 @@ class encode_decode:
         if os.path.exists(self.file_path):
             self.key = self.read_file(self.file_path).encode()
             if self.key:
-                log.info(f"File '{self.file_path}' exists and contains:\n{self.key}")
+                log.info("Encryption key loaded")
             else:
                 log.warning(f"File '{self.file_path}' exists but is empty.")
         else:

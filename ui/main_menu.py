@@ -1,6 +1,7 @@
 
 import sys
 from database.user_db import user_database
+from ui.input_helpers import read_password
 
 class main_window:
 
@@ -32,7 +33,7 @@ class main_window:
         if user_input == '1':
             account = input("Please enter the account: ")
             user_email = input("Please enter your user: ")
-            password = input("Please enter your password: ")
+            password = read_password("Please enter your password: ")
             self.data.submit(account, user_email, password)
 
         elif user_input == '2':
@@ -47,7 +48,7 @@ class main_window:
         elif user_input == '4':
             account = input("Please enter the account to update: ")
             user_email = input("Please enter your new user: ")
-            password = input("Please enter your new password: ")
+            password = read_password("Please enter your new password: ")
             self.data.update(account, user_email, password)
         
         elif user_input == '5':

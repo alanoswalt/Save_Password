@@ -45,13 +45,12 @@ class all_users_database:
             raise RuntimeError(f"Could not initialize database '{self.name_of_db}'") from exc
 
     def add_new_user(self, user_email, password):
-        print("Conecting to DB..")
         try:
             password = self.user_encoder.encode(password)
             with sqlite3.connect(self.name_of_db) as connection:
                 connection.execute(self.db_insert, (user_email, password))
         except sqlite3.Error as exc:
-            log.exception("Could not add user '%s'", user_email)
+            log.exception("Could not add user")
             raise RuntimeError("Could not add user") from exc
    
     def look_for_user(self, user_email):
@@ -60,12 +59,11 @@ class all_users_database:
             with sqlite3.connect(self.name_of_db) as connection:
                 result = connection.execute(self.check_query, (user_email,)).fetchone()
         except sqlite3.Error as exc:
-            log.exception("Could not look up user '%s'", user_email)
+            log.exception("Could not look up user")
             raise RuntimeError("Could not look up user") from exc
 
         exists = result is not None
-        log.info("User %s %s in the table %s.", user_email,
-                 "already exists" if exists else "does not exist", self.name_of_table)
+        log.info("User lookup completed: %s.", "found" if exists else "not found")
         return exists
         
     def compare_password(self, user_email, password):
@@ -74,7 +72,7 @@ class all_users_database:
             with sqlite3.connect(self.name_of_db) as connection:
                 result = connection.execute(self.retrive_password, (user_email,)).fetchone()
         except sqlite3.Error as exc:
-            log.exception("Could not retrieve password for '%s'", user_email)
+            log.exception("Could not retrieve user password")
             raise RuntimeError("Could not retrieve user password") from exc
 
         if result is None:
@@ -83,5 +81,5 @@ class all_users_database:
         try:
             return self.user_encoder.decode(result[0]) == password
         except Exception:
-            log.exception("Could not decode password for '%s'", user_email)
+            log.exception("Could not decode user password")
             raise RuntimeError("Could not decode user password")

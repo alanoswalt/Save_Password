@@ -54,8 +54,7 @@ class user_database:
             for record in records:
                 record0 = record[0]
                 record1 = self.encoder.decode(record[1])
-                record2 = self.encoder.decode(record[2])
-                print(f"{record0}, {record1}, {record2}")
+                print(f"Account: {record0}, User: {record1}, Password: [hidden]")
         except sqlite3.Error as exc:
             raise RuntimeError("Could not read password records") from exc
 

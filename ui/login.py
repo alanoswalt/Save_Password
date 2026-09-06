@@ -2,6 +2,7 @@
 import sys
 import logging as log
 from database.all_users_db import all_users_database
+from ui.input_helpers import read_password
 
 
 class login_window:
@@ -31,7 +32,7 @@ class login_window:
                 continue
 
             user_email = input("Please enter your user: ").strip()
-            password = input("Please enter your password: ")
+            password = read_password("Please enter your password: ")
 
             if not user_email or not password:
                 print("User and password are required.")
