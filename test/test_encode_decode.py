@@ -1,32 +1,44 @@
 import pytest
-import os
-from encryption import encoder
+from cryptography.fernet import Fernet
 
-# Fixture to initialize the main.encode_decode class instance
-# Fixture here and not un conftest because of clarity
-#Scope class because we want the sabe instance for all test in the class
-@pytest.fixture(scope='class')
-def encode_decode_instance():
-    test_file_key = os.path.join("test_file_key")
-    expected_directory = "test/data/keys"
-    instance = encoder.encode_decode(test_file_key, base_dir=expected_directory)
-    return instance
+from encryption.encoder import (
+    InvalidMasterPassword,
+    create_vault,
+    derive_key,
+    unlock_vault,
+    vault_encoder,
+)
+
 
 @pytest.mark.encode_decode
-class encode_decode_Tests:
+def test_vault_encrypts_and_decrypts():
+    salt, encrypted_vault_key, vault_key = create_vault("master-password")
+    encoder = vault_encoder(vault_key)
 
-    def test_check_or_create_key(self, encode_decode_instance):
-        expected_file_key = "test/data/keys/test_file_key.txt"
-        assert os.path.exists(expected_file_key), f"File does not exist: {expected_file_key}"
+    encrypted_value = encoder.encode("Hello")
 
-    def test_encode_decode(self, encode_decode_instance):
-        
-        expected_return_text = "Hello"
+    assert encoder.decode(encrypted_value) == "Hello"
+    assert encrypted_vault_key != vault_key
+    assert len(salt) == 16
 
-        text = "Hello"
-        #Esto lo puedo hacer un fixture?
-        encode_return_text = encode_decode_instance.encode(text)
-        decode_return_text = encode_decode_instance.decode(encode_return_text)
 
-        
-        assert (expected_return_text == decode_return_text), f"Encode incorrect, expected {expected_return_text}, real return: {decode_return_text}"
+@pytest.mark.encode_decode
+def test_master_password_unlocks_vault():
+    salt, encrypted_vault_key, vault_key = create_vault("master-password")
+
+    assert unlock_vault("master-password", salt, encrypted_vault_key) == vault_key
+
+
+@pytest.mark.encode_decode
+def test_wrong_master_password_cannot_unlock_vault():
+    salt, encrypted_vault_key, _ = create_vault("master-password")
+
+    with pytest.raises(InvalidMasterPassword):
+        unlock_vault("wrong-password", salt, encrypted_vault_key)
+
+
+@pytest.mark.encode_decode
+def test_different_salts_derive_different_keys():
+    assert derive_key("same-password", b"1" * 16) != derive_key(
+        "same-password", b"2" * 16
+    )
