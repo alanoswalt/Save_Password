@@ -1,70 +1,45 @@
-import main
-import pytest
-import os
 import sqlite3
-from database import all_users_db
+
+import pytest
+
+from database.all_users_db import all_users_database
 
 
-# Fixture to initialize the main.encode_decode class instance
-@pytest.fixture(scope='class')
-def users_database_instance():
-    test_name_database = "all_user_database_test"
-    instance = all_users_db.all_users_database(
-        test_name_database,
-        db_path=os.path.join("test", "all_user_database_test.db"),
-        key_path=os.path.join("test", "keys", "all_user_database_test.txt"),
+@pytest.fixture
+def users_database_instance(tmp_path):
+    return all_users_database(
+        db_path=str(tmp_path / "all_user.db"),
     )
-    return instance
 
 
 @pytest.mark.users_database
-class user_DB_Tests:
+def test_database_uses_new_vault_schema(users_database_instance):
+    with sqlite3.connect(users_database_instance.name_of_db) as connection:
+        columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(all_user)")
+        }
 
-    def test_check_database_files(self, users_database_instance):
-        expected_file_key = "test/keys/all_user_database_test.txt"
-        expected_file_db = "test/all_user_database_test.db"
-        assert os.path.exists(expected_file_key), f"File does not exist: {expected_file_key}"
-        assert os.path.exists(expected_file_db), f"File does not exist: {expected_file_db}"
-        
-    def test_add_user(self, users_database_instance):
-        
-        test_database = "test/all_user_database_test.db"
-        user_email = "test_username"
-        test_user_password = "test_password"
+    assert columns == {"user_email", "salt", "encrypted_vault_key"}
 
-        query = "SELECT 1 FROM all_user WHERE user_email = ? LIMIT 1"
 
-        users_database_instance.add_new_user(user_email, test_user_password)
+@pytest.mark.users_database
+def test_add_user_and_unlock_vault(users_database_instance):
+    vault_key = users_database_instance.add_new_user("test_username", "test_password")
 
-        conn = sqlite3.connect(test_database)
-        cursor = conn.cursor()
+    assert vault_key
+    assert users_database_instance.look_for_user("test_username")
+    assert users_database_instance.unlock_user("test_username", "test_password") == vault_key
 
-        cursor.execute(query, (user_email,))
-        result = cursor.fetchone()
 
-        cursor.close()
-        conn.close()
+@pytest.mark.users_database
+def test_wrong_password_does_not_unlock_vault(users_database_instance):
+    users_database_instance.add_new_user("test_username", "test_password")
 
-        assert(result)
+    assert users_database_instance.unlock_user("test_username", "wrong") is None
 
-    def test_look_for_user(self, users_database_instance):
-        
-        user_email = "test_username"
-        incorrect_user_name =  "incorrect_user_name"
-        result_positive = users_database_instance.look_for_user(user_email)
 
-        result_negative = users_database_instance.look_for_user(incorrect_user_name)
-
-        if result_positive and not result_negative:
-            assert(True)
-        else:
-            assert(False)
-
-    def test_compare_password(self, users_database_instance):
-        
-        test_user_email = "test_username"
-        test_user_password = "test_password"
-
-        result_positive = users_database_instance.compare_password(test_user_email, test_user_password)
-
-        assert(result_positive)
+@pytest.mark.users_database
+def test_missing_user_is_not_found(users_database_instance):
+    assert not users_database_instance.look_for_user("missing")
+    assert users_database_instance.unlock_user("missing", "password") is None

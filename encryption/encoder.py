@@ -1,58 +1,47 @@
-import logging as log
+import base64
 import os
-from cryptography.fernet import Fernet
 
-class encode_decode:
-    def __init__(self, name_of_key, base_dir="data/keys", key_path=None) -> None:
-        """Create an encoder using a key stored at an explicit or default path.
+from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
-        ``key_path`` is useful for tests, while the application can continue to
-        use the default ``data/keys`` directory.
-        """
-        self.file_path = key_path or os.path.join(base_dir, f"{name_of_key}.txt")
-        self.key = ""
-        self.check_or_create_key()
 
-    def encode(self, field):
-        fernet = Fernet(self.key)
-        encrypted_field = fernet.encrypt(field.encode())
-        return encrypted_field
+class InvalidMasterPassword(ValueError):
+    """Raised when a master password cannot unlock a user's vault."""
 
-    def decode(self, encrypted_field):
-        fernet = Fernet(self.key)
-        decrypted_field = fernet.decrypt(encrypted_field).decode()    
-        return decrypted_field
 
-    def read_file(self, file_path):
-        try:
-            with open(file_path, 'r') as file:
-                content = file.read()
-                return content
-        except FileNotFoundError:
-            return None
+def derive_key(password: str, salt: bytes) -> bytes:
+    """Derive a Fernet-compatible key from a master password and salt."""
+    kdf = Scrypt(salt=salt, length=32, n=2**14, r=8, p=1)
+    derived_key = kdf.derive(password.encode("utf-8"))
+    return base64.urlsafe_b64encode(derived_key)
 
-    #Escribir la llave en texto, no en binario
-    def write_key(self, file_path, data):
-        log.info(f"File '{file_path}' does not exist. Creating it...")
-        os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
-        with open(file_path, 'w') as file:
-            file.write(data.decode())
-        log.info("Encryption key file created")
 
-    #Crea la llave en binario
-    def create_new_key(self):
-        log.info("Creating key")
-        key = Fernet.generate_key()
-        return key
+def create_vault(password: str) -> tuple[bytes, bytes, bytes]:
+    """Create salt, encrypted vault key, and the in-memory vault key."""
+    salt = os.urandom(16)
+    derived_key = derive_key(password, salt)
+    vault_key = Fernet.generate_key()
+    encrypted_vault_key = Fernet(derived_key).encrypt(vault_key)
+    return salt, encrypted_vault_key, vault_key
 
-    def check_or_create_key(self):
-         # Check if the file exists
-        if os.path.exists(self.file_path):
-            self.key = self.read_file(self.file_path).encode()
-            if self.key:
-                log.info("Encryption key loaded")
-            else:
-                log.warning(f"File '{self.file_path}' exists but is empty.")
-        else:
-            self.key = self.create_new_key()
-            self.write_key(self.file_path, self.key)
+
+def unlock_vault(password: str, salt: bytes, encrypted_vault_key: bytes) -> bytes:
+    """Unlock and return a vault key using the master password."""
+    derived_key = derive_key(password, salt)
+    try:
+        return Fernet(derived_key).decrypt(encrypted_vault_key)
+    except InvalidToken as exc:
+        raise InvalidMasterPassword("Incorrect master password") from exc
+
+
+class vault_encoder:
+    """Encrypt and decrypt vault fields using an unlocked vault key."""
+
+    def __init__(self, vault_key: bytes) -> None:
+        self.fernet = Fernet(vault_key)
+
+    def encode(self, field: str) -> bytes:
+        return self.fernet.encrypt(field.encode("utf-8"))
+
+    def decode(self, encrypted_field: bytes) -> str:
+        return self.fernet.decrypt(encrypted_field).decode("utf-8")

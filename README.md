@@ -1,7 +1,8 @@
 # Save Password
 
-This is a small command-line password manager written in Python. It uses
-SQLite for storage and Fernet encryption for saved credentials.
+This is a local desktop password manager written in Python. It uses SQLite for
+storage, Scrypt for master-password key derivation, and Fernet encryption for
+saved credentials. The desktop interface uses CustomTkinter.
 
 ## Setup
 
@@ -18,7 +19,19 @@ python3 -m pip install -r requirements.txt
 ```
 
 The application creates its runtime directories and files under `data/` on
-first use. Test data is kept under `test/`.
+first use. Test data is kept under temporary pytest directories.
+
+CustomTkinter is installed from `requirements.txt`; the source repository does
+not need to be downloaded separately.
+
+The application no longer stores Fernet keys in `data/keys/`. Instead, a
+random vault key is encrypted with a key derived from the master password and
+stored with the user's salt in the users database.
+
+Existing databases created by an older version use the old key-file format and
+are intentionally rejected. Back up the old `data/` directory before creating
+a new vault. A migration tool can be added later to decrypt old records and
+re-encrypt them using the new format.
 
 ## Run the application
 
@@ -58,9 +71,9 @@ python3 -m pytest test/test_user_database.py -q
 python3 -m pytest -m user_database -q
 ```
 
-## Current security note
+## Security design
 
-The current version encrypts values with Fernet keys stored locally. This
-protects the database from casual inspection but is not yet a complete
-password-manager key hierarchy. Master-password-based key derivation and key
-storage improvements are planned separately.
+The master password is never stored. Scrypt derives a key from the master
+password and a random salt. That derived key unlocks a random per-user vault
+key, and the vault key encrypts saved credentials. Forgetting the master
+password means the vault cannot be unlocked.

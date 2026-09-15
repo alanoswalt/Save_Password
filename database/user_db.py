@@ -1,75 +1,107 @@
-import sqlite3
 import os
-from encryption.encoder import encode_decode
+import sqlite3
+
+from encryption.encoder import vault_encoder
+
 
 class user_database:
-    def __init__(self, name_of_db, db_path=None, key_path=None) -> None:
-        #root = Tk()
-        #root.title('Save Passwords')
-        #root.geometry("400x200")
-
-        #Database variables
+    def __init__(self, name_of_db, vault_key, db_path=None) -> None:
         self.name_of_db = db_path or os.path.join("data", "users", f"{name_of_db}.db")
         self.name_of_table = "password_table"
-
-        self.db_insert = f'''INSERT INTO '{self.name_of_table}'(account, user_email, password) VALUES (?, ?, ?)'''
-        self.db_delete = f'''DELETE from '{self.name_of_table}' WHERE account = ?'''
-        self.db_update = f'''UPDATE '{self.name_of_table}' SET user_email = ?, password = ? WHERE account = ?'''
-        self.db_query = f'''SELECT * FROM '{self.name_of_table}' '''
-
-        self.db_connect = f'''SELECT name FROM sqlite_master WHERE type='table' AND name='{self.name_of_table}' '''
-
-        self.db_create = f'''CREATE TABLE IF NOT EXISTS {self.name_of_table} (account TEXT, user_email TEXT, password TEXT)'''
-
-        #Have an ecoder for the database
-        self.encoder = encode_decode(name_of_db, key_path=key_path)
-
-        #Call function to connect to DB
+        self.db_insert = (
+            f"INSERT INTO {self.name_of_table} "
+            "(account, user_email, password) VALUES (?, ?, ?)"
+        )
+        self.db_delete = f"DELETE FROM {self.name_of_table} WHERE account = ?"
+        self.db_update = (
+            f"UPDATE {self.name_of_table} SET user_email = ?, password = ? "
+            "WHERE account = ?"
+        )
+        self.db_connect = (
+            "SELECT name FROM sqlite_master "
+            f"WHERE type='table' AND name='{self.name_of_table}'"
+        )
+        self.db_create = f"""
+            CREATE TABLE IF NOT EXISTS {self.name_of_table} (
+                account TEXT PRIMARY KEY,
+                user_email BLOB NOT NULL,
+                password BLOB NOT NULL
+            )
+        """
+        self.encoder = vault_encoder(vault_key)
         self.create_or_connect_dbs()
-
-        #root.mainloop()
 
     def create_or_connect_dbs(self):
         os.makedirs(os.path.dirname(self.name_of_db) or ".", exist_ok=True)
         try:
             with sqlite3.connect(self.name_of_db) as connection:
-                cursor = connection.cursor()
-                cursor.execute(self.db_connect)
-                result = cursor.fetchone()
+                if not connection.execute(self.db_connect).fetchone():
+                    connection.execute(self.db_create)
+                    return
 
-                if result:
-                    print(f"The table '{self.name_of_table}' exists.")
-                else:
-                    print(f"The table '{self.name_of_table}' does not exist. Creating it now...")
-                    cursor.execute(self.db_create)
+                columns = {
+                    row[1]: row for row in connection.execute(
+                        f"PRAGMA table_info({self.name_of_table})"
+                    )
+                }
+                if not columns.get("account", (None, None, None, None, None, 0))[5]:
+                    raise RuntimeError(
+                        "The existing vault database uses the old key format. "
+                        "Back it up and create a new vault database."
+                    )
         except sqlite3.Error as exc:
             raise RuntimeError(f"Could not initialize database '{self.name_of_db}'") from exc
 
     def query(self):
+        for account, user_email in self.list_entries():
+            print(f"Account: {account}, User: {user_email}, Password: [hidden]")
 
+    def list_entries(self):
         try:
             with sqlite3.connect(self.name_of_db) as connection:
-                records = connection.execute(self.db_query).fetchall()
+                encrypted_records = connection.execute(
+                    f"SELECT account, user_email, password FROM {self.name_of_table}"
+                ).fetchall()
 
-            for record in records:
-                record0 = record[0]
-                record1 = self.encoder.decode(record[1])
-                print(f"Account: {record0}, User: {record1}, Password: [hidden]")
+            return [
+                (account, self.encoder.decode(encrypted_user))
+                for account, encrypted_user, _encrypted_password in encrypted_records
+            ]
         except sqlite3.Error as exc:
             raise RuntimeError("Could not read password records") from exc
 
-    def submit(self, account, user_email, password):
-
+    def get_password(self, account):
+        """Decrypt and return one password for an authenticated vault user."""
         try:
-            user_email = self.encoder.encode(user_email)
-            password = self.encoder.encode(password)
             with sqlite3.connect(self.name_of_db) as connection:
-                connection.execute(self.db_insert, (account, user_email, password))
+                record = connection.execute(
+                    f"SELECT password FROM {self.name_of_table} WHERE account = ?",
+                    (account,),
+                ).fetchone()
+        except sqlite3.Error as exc:
+            raise RuntimeError("Could not retrieve password") from exc
+
+        if record is None:
+            return None
+        return self.encoder.decode(record[0])
+
+    def submit(self, account, user_email, password):
+        try:
+            with sqlite3.connect(self.name_of_db) as connection:
+                connection.execute(
+                    self.db_insert,
+                    (
+                        account,
+                        self.encoder.encode(user_email),
+                        self.encoder.encode(password),
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError("Account already exists") from exc
         except sqlite3.Error as exc:
             raise RuntimeError("Could not save password record") from exc
 
     def delete(self, account):
-            #This needs to happend again inside the function
         try:
             with sqlite3.connect(self.name_of_db) as connection:
                 connection.execute(self.db_delete, (account,))
@@ -77,12 +109,11 @@ class user_database:
             raise RuntimeError("Could not delete password record") from exc
 
     def update(self, account, user_email, password):
-
-        #This needs to happend again inside the function
         try:
-            user_email = self.encoder.encode(user_email)
-            password = self.encoder.encode(password)
             with sqlite3.connect(self.name_of_db) as connection:
-                connection.execute(self.db_update, (user_email, password, account))
+                connection.execute(
+                    self.db_update,
+                    (self.encoder.encode(user_email), self.encoder.encode(password), account),
+                )
         except sqlite3.Error as exc:
             raise RuntimeError("Could not update password record") from exc
