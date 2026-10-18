@@ -18,8 +18,20 @@ On Bash/Linux/macOS, use:
 python3 -m pip install -r requirements.txt
 ```
 
-The application creates its runtime directories and files under `data/` on
-first use. Test data is kept under temporary pytest directories.
+When running from source, the application creates its runtime directories and
+files under the repository's `data/` directory. Test data is kept under
+temporary pytest directories.
+
+When running as a packaged Windows application, runtime data is stored in the
+current Windows user's local application-data folder:
+
+```text
+%LOCALAPPDATA%\SavePassword\
+```
+
+This keeps each person's vault separate from the executable and avoids hard-
+coded repository paths. The application creates this folder automatically.
+The log is written to `save_password.log` in the same folder.
 
 CustomTkinter is installed from `requirements.txt`; the source repository does
 not need to be downloaded separately.
@@ -44,6 +56,52 @@ On Bash/Linux/macOS:
 ```bash
 python3 main.py
 ```
+
+## Share the application with Windows users
+
+The target computer does not need Python, the source repository, or the
+project's virtual environment. Build the application on a Windows computer
+with Python and the project dependencies installed, then share the complete
+`dist\SavePassword` folder.
+
+From PowerShell in the repository directory:
+
+```powershell
+python -m pip install -r requirements.txt
+.\build.ps1
+```
+
+If PowerShell blocks local scripts, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build.ps1
+```
+
+The executable will be created at:
+
+```text
+dist\SavePassword\SavePassword.exe
+```
+
+Send the whole `dist\SavePassword` folder as a ZIP file. The recipient can
+extract it and double-click `SavePassword.exe`; Python is bundled inside the
+build. Do not send only the `.exe`, because the `--onedir` build also needs its
+support files.
+
+To create a desktop shortcut, right-click `SavePassword.exe`, choose **Show
+more options**, then **Send to > Desktop (create shortcut)**. The project
+includes a shield-and-lock icon at `assets\save_password.ico`, and
+`build.ps1` embeds it automatically. Its editable vector source is
+`assets\save_password.svg`.
+
+Each Windows user creates and owns their own local vault. Sharing the
+executable does not share vault data between people. Back up the folder
+`%LOCALAPPDATA%\SavePassword\` if a user needs to move their vault to another
+computer.
+
+For a single-file build, PyInstaller can also use `--onefile`, but the
+directory build is easier to troubleshoot and distribute with CustomTkinter.
+The application data location remains outside the executable in either mode.
 
 ## Run the tests
 

@@ -1,12 +1,15 @@
 import os
 import sqlite3
 
+from app.paths import USERS_DIR
 from encryption.encoder import vault_encoder
 
 
 class user_database:
     def __init__(self, name_of_db, vault_key, db_path=None) -> None:
-        self.name_of_db = db_path or os.path.join("data", "users", f"{name_of_db}.db")
+        self.name_of_db = os.fspath(
+            db_path if db_path is not None else USERS_DIR / f"{name_of_db}.db"
+        )
         self.name_of_table = "password_table"
         self.db_insert = (
             f"INSERT INTO {self.name_of_table} "
