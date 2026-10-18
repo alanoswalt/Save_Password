@@ -2,12 +2,20 @@ import logging as log
 import os
 import sqlite3
 
+from app.paths import ALL_USERS_DB
 from encryption.encoder import InvalidMasterPassword, create_vault, unlock_vault
 
 
 class all_users_database:
     def __init__(self, name_of_db="all_user", db_path=None) -> None:
-        self.name_of_db = db_path or os.path.join("data", "all_user.db")
+        if db_path is not None:
+            self.name_of_db = os.fspath(db_path)
+        elif name_of_db == "all_user":
+            self.name_of_db = os.fspath(ALL_USERS_DB)
+        else:
+            # Preserve support for callers that pass an explicit database path
+            # as the first argument, including test paths without .db suffix.
+            self.name_of_db = os.fspath(name_of_db)
         self.name_of_table = "all_user"
         self.db_insert = (
             f"INSERT INTO {self.name_of_table} "
